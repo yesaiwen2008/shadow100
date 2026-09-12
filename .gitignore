@@ -1,0 +1,29 @@
+# ===== 构建产物 =====
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/release/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# ===== 签名（绝不上传）=====
+!debug.keystore.example
+
+# ===== Node =====
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# ===== Capacitor 同步产物 =====
+android/app/src/main/assets/public/
+www/
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
