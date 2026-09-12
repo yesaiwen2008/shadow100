@@ -22,7 +22,7 @@
 **方式二：自己编译**
 
 ```bash
-git clone https://github.com/yesaiwen2008/shadow-100.git
+git clone https://github.com/yesaiwen2008/shadow100.git
 cd shadow-100
 # 需先安装 Android SDK、Node.js
 cd android && ./gradlew assembleDebug
