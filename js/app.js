@@ -114,6 +114,15 @@ async function renderStats() {
 
   document.getElementById('st-total-days').textContent = totalDays;
   document.getElementById('st-streak').textContent = streak;
+
+  // 今日练习时长（自然日，按本地时区）
+  const todaySeconds = (dayMap[todayKey] || { seconds: 0 }).seconds;
+  const todayMinutes = Math.round(todaySeconds / 60);
+  document.getElementById('st-today').textContent =
+    todayMinutes >= 60
+      ? `${Math.floor(todayMinutes / 60)} 小时 ${todayMinutes % 60} 分钟`
+      : `${todayMinutes} 分钟`;
+  document.getElementById('st-today-count').textContent = (dayMap[todayKey] || { count: 0 }).count;
   document.getElementById('st-hours').textContent = hoursText;
   document.getElementById('st-count').textContent = records.length;
   document.getElementById('st-best').textContent = best;
