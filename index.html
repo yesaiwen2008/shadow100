@@ -26,6 +26,7 @@
         <button class="btn-big" onclick="openStats()">📊 练习统计</button>
         <button class="btn-big" onclick="openImport()">📥 导入新内容</button>
         <p class="home-footnote">欢迎关注公众号：叶赛文，一起影子练习100遍</p>
+        <p class="app-version" id="app-version"></p>
       </div>
     </div>
 
@@ -121,6 +122,7 @@
         <div class="records">
           <h3>📼 练习记录 <span id="p-rec-count">0</span></h3>
           <div id="record-list"></div>
+          <button id="btn-toggle-records" class="btn-toggle-records" style="display:none" onclick="toggleRecordsView()"></button>
         </div>
       </div>
     </div>
@@ -150,6 +152,11 @@
         <div id="import-queue" class="queue-box"></div>
         <button onclick="clearQueue()" id="btn-clear-queue" class="btn-ghost" style="display:none">🗑 清空清单</button>
         <button onclick="doImport()" id="btn-import" disabled>确认导入</button>
+
+        <hr class="divider">
+        <label class="lbl">🧹 释放空间</label>
+        <button id="btn-export-recordings" onclick="exportRecordingsAndFree()" class="btn-folder" style="background:#d9771f">🎙 导出录音文件（释放空间，统计保留）</button>
+        <p class="import-hint">把练习录音导出成音频文件保存到手机，并从App内清除这部分数据。导出后练习次数、时长、打卡天数等统计完全不受影响。</p>
 
         <hr class="divider">
         <label class="lbl">💾 备份 / 换机迁移</label>
