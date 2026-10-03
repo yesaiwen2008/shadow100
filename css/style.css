@@ -110,23 +110,23 @@ select:focus-visible,
   top: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 44px 1fr 44px;
   align-items: center;
   gap: var(--sp-2);
-  padding: 14px var(--sp-4);
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) var(--sp-4);
   background: rgba(10,14,22,.88);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-soft);
 }
 .topbar .back {
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: var(--radius-s);
-  font-size: 17px;
+  font-size: 19px;
   cursor: pointer;
   transition: background .15s;
 }
@@ -147,10 +147,10 @@ select:focus-visible,
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.topbar-spacer { width: 36px; height: 36px; }
+.topbar-spacer { width: 44px; height: 44px; }
 
 .manage-btn {
-  width: auto; min-width: 36px; height: 36px;
+  width: auto; min-width: 44px; height: 44px;
   padding: 0 10px;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface);
