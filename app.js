@@ -26,6 +26,9 @@ async function init() {
   await renderHome();
   setupImport();
   setupLyricsToggle();
+  const audioEl = document.getElementById('audio');
+  if (audioEl) audioEl.addEventListener('loadedmetadata', applySpeed);
+  applySpeed();
   const vEl = document.getElementById('app-version');
   if (vEl) vEl.textContent = `影子100 v${APP_VERSION}`;
 }
@@ -37,6 +40,39 @@ function showView(name) {
   // 每次切换页面都回到顶部：避免“继承”上一个页面的滚动位置，
   // 导致要先往上翻一下才能看到录音按钮等内容。
   window.scrollTo(0, 0);
+}
+
+// ========== 播放速度（慢速 0.5/0.7，倍速 1.3/1.5/1.7/2）==========
+const SPEED_KEY = 'shadow_playback_rate';
+const SPEED_OPTIONS = [0.5, 0.7, 1, 1.3, 1.5, 1.7, 2];
+function getSavedSpeed() {
+  try {
+    const v = parseFloat(localStorage.getItem(SPEED_KEY));
+    return SPEED_OPTIONS.includes(v) ? v : 1;
+  } catch (e) { return 1; }
+}
+let currentSpeed = getSavedSpeed();
+
+// 切换音频 src 会把 playbackRate 重置成 defaultPlaybackRate，所以两个都要设
+function applySpeed() {
+  const audio = document.getElementById('audio');
+  if (!audio) return;
+  audio.defaultPlaybackRate = currentSpeed;
+  audio.playbackRate = currentSpeed;
+  // 变速不变调（保持声音自然）
+  audio.preservesPitch = true;
+  audio.webkitPreservesPitch = true;
+  audio.mozPreservesPitch = true;
+  document.querySelectorAll('#speed-bar button').forEach(btn => {
+    btn.classList.toggle('active', parseFloat(btn.dataset.rate) === currentSpeed);
+  });
+}
+
+function setSpeed(rate) {
+  if (!SPEED_OPTIONS.includes(rate)) return;
+  currentSpeed = rate;
+  try { localStorage.setItem(SPEED_KEY, String(rate)); } catch (e) {}
+  applySpeed();
 }
 
 // ========== 记住“上次读到哪”==========
@@ -333,6 +369,7 @@ async function openPractice(id) {
   } else if (currentLesson.audioUri) {
     audio.src = currentLesson.audioUri; // content:// URI，WebView 可直接播放
   }
+  applySpeed();
 
   // 歌词
   lyricsData = currentLesson.lyrics
@@ -529,6 +566,7 @@ async function toggleRecord() {
     // 播放原声
     const audio = document.getElementById('audio');
     audio.currentTime = 0;
+    applySpeed();
     // 播放结束2秒后自动停止录音（随时可手动按停止）
     audio.onended = () => {
       if (isRecording) {
