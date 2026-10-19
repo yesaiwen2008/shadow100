@@ -714,3 +714,29 @@ select:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
+/* ==========================================================================
+   跟读自己的录音
+   ========================================================================== */
+.shadow-bar { flex: 1; display: grid; grid-template-columns: 1fr 1.4fr; gap: 6px; }
+.shadow-bar button {
+  height: 36px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: var(--radius-s);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.shadow-bar button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.shadow-now {
+  margin-top: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+}
+.record-item.shadow-src { border-color: var(--accent); background: linear-gradient(90deg, rgba(234,176,64,.10), var(--surface) 70%); }
+.record-item .btns button.shadow-pick { font-size: 14px; }

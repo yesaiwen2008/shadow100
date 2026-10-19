@@ -5,7 +5,7 @@
 
 const TARGET = 100;
 const DEFAULT_CATEGORY = '新概念英语';
-const APP_VERSION = '3.22'; // 每次发新版就改这一处，首页底部会自动显示
+const APP_VERSION = '3.27'; // 每次发新版就改这一处，首页底部会自动显示
 
 let currentCategory = null;
 let currentLesson = null;
@@ -73,6 +73,102 @@ function setSpeed(rate) {
   currentSpeed = rate;
   try { localStorage.setItem(SPEED_KEY, String(rate)); } catch (e) {}
   applySpeed();
+}
+
+// ========== 跟读对象：原声 / 我的上一次录音 / 指定某一条录音 ==========
+// 把自己录的某一遍当作“母本”来跟读、再录，用来发现自己的不足。
+let shadowMode = 'original';  // 'original' 原声 | 'last' 自动跟最新一次录音 | 'pick' 指定某一条
+let shadowRecId = null;       // 当前作为母本的录音 id
+let shadowRecAttempt = 0;     // 母本是第几次（用于显示）
+let audioObjUrl = null;       // audio 元素当前使用的 blob URL，换源时释放
+
+function setAudioBlobSrc(blob) {
+  const audio = document.getElementById('audio');
+  if (audioObjUrl) { try { URL.revokeObjectURL(audioObjUrl); } catch (e) {} audioObjUrl = null; }
+  audioObjUrl = URL.createObjectURL(blob);
+  audio.src = audioObjUrl;
+}
+
+function loadOriginalAudio() {
+  const audio = document.getElementById('audio');
+  if (!currentLesson) return;
+  // 音频：优先 blob（导入时拷贝），其次 uri（文件夹导入，引用外部文件）
+  if (currentLesson.audioBlob) {
+    setAudioBlobSrc(currentLesson.audioBlob);
+  } else if (currentLesson.audioUri) {
+    if (audioObjUrl) { try { URL.revokeObjectURL(audioObjUrl); } catch (e) {} audioObjUrl = null; }
+    audio.src = currentLesson.audioUri; // content:// URI，WebView 可直接播放
+  }
+}
+
+async function applyShadowSource() {
+  const audio = document.getElementById('audio');
+  audio.pause();
+  if (shadowMode === 'original' || !currentLesson) {
+    shadowMode = 'original';
+    loadOriginalAudio();
+  } else {
+    const records = await getRecordsByLesson(currentLesson.id);
+    const usable = records.filter(r => r.blob instanceof Blob);
+    let rec = null;
+    if (shadowMode === 'pick') rec = usable.find(r => r.id === shadowRecId) || null;
+    else rec = usable.sort((a, b) => b.time - a.time)[0] || null;   // 'last'
+    if (!rec) {
+      shadowMode = 'original';
+      loadOriginalAudio();
+    } else {
+      shadowRecId = rec.id;
+      shadowRecAttempt = rec.attempt;
+      setAudioBlobSrc(rec.blob);
+    }
+  }
+  applySpeed();   // 换 src 后重新套用播放速度
+  updateShadowUI();
+}
+
+function updateShadowUI() {
+  document.querySelectorAll('#shadow-bar button').forEach(btn => {
+    btn.classList.toggle('active',
+      btn.dataset.mode === 'original' ? shadowMode === 'original' : shadowMode !== 'original');
+  });
+  const lastBtn = document.querySelector('#shadow-bar button[data-mode="last"]');
+  if (lastBtn) lastBtn.textContent = shadowMode === 'pick' ? '🎯 指定的录音' : '🔁 我的上一次';
+  const now = document.getElementById('shadow-now');
+  if (now) {
+    if (shadowMode === 'original') {
+      now.classList.add('hidden');
+    } else {
+      now.classList.remove('hidden');
+      now.textContent = `🎯 正在跟读你的第 ${shadowRecAttempt} 次练习`
+        + (shadowMode === 'last' ? '（自动跟最新一次）' : '');
+    }
+  }
+  document.querySelectorAll('.record-item').forEach(el => {
+    el.classList.toggle('shadow-src', shadowMode !== 'original' && el.id === `rec-${shadowRecId}`);
+  });
+}
+
+async function setShadowMode(mode) {
+  if (isRecording) return;           // 录音中不允许换母本
+  stopPlayback();
+  if (mode === 'last') {
+    const records = await getRecordsByLesson(currentLesson.id);
+    if (!records.some(r => r.blob instanceof Blob)) {
+      alert('还没有可以跟读的录音。\n先录一遍，之后就能跟读自己的上一次了。\n（已导出释放空间的录音不能再跟读）');
+      return;
+    }
+  }
+  shadowMode = mode;
+  await applyShadowSource();
+}
+
+async function pickShadow(id) {
+  if (isRecording) return;
+  stopPlayback();
+  shadowMode = 'pick';
+  shadowRecId = id;
+  await applyShadowSource();
+  window.scrollTo({ top: 0, behavior: 'smooth' });  // 回到播放器，直接点“开始录音”
 }
 
 // ========== 记住“上次读到哪”==========
@@ -362,13 +458,10 @@ async function openPractice(id) {
     currentLesson.title || `第${currentLesson.book}册 第${currentLesson.lesson}课`;
   document.getElementById('p-subtitle').textContent = currentLesson.subtitle || '';
 
-  // 音频：优先 blob（导入时拷贝），其次 uri（文件夹导入，引用外部文件）
-  const audio = document.getElementById('audio');
-  if (currentLesson.audioBlob) {
-    audio.src = URL.createObjectURL(currentLesson.audioBlob);
-  } else if (currentLesson.audioUri) {
-    audio.src = currentLesson.audioUri; // content:// URI，WebView 可直接播放
-  }
+  // 每次进入课程都默认跟读原声
+  shadowMode = 'original';
+  shadowRecId = null;
+  loadOriginalAudio();
   applySpeed();
 
   // 歌词
@@ -382,6 +475,7 @@ async function openPractice(id) {
 
   await renderLyrics();
   await renderPractice();
+  updateShadowUI();
   showView('practice');
 }
 
@@ -418,7 +512,7 @@ function setupLyricsToggle() {
 
 // 歌词同步高亮
 function syncLyrics() {
-  if (!showLyricsPref || isRecording || lyricsData.length === 0) return;
+  if (!showLyricsPref || isRecording || lyricsData.length === 0 || shadowMode !== 'original') return;
   const audio = document.getElementById('audio');
   const t = audio.currentTime;
   let active = -1;
@@ -463,7 +557,7 @@ async function renderPractice() {
 
   visible.forEach(rec => {
     const div = document.createElement('div');
-    div.className = 'record-item';
+    div.className = 'record-item' + (shadowMode !== 'original' && rec.id === shadowRecId ? ' shadow-src' : '');
     div.id = `rec-${rec.id}`;
     const hasBlob = rec.blob instanceof Blob;
     div.innerHTML = `
@@ -473,6 +567,7 @@ async function renderPractice() {
       </div>
       <div class="btns">
         ${hasBlob ? `
+          <button class="shadow-pick" title="跟读这一条" onclick="pickShadow(${rec.id})">🎯</button>
           <button id="play-btn-${rec.id}" onclick="togglePlayRecord(${rec.id})">▶</button>
           <button onclick="downloadRecord(${rec.id})">⬇</button>
         ` : `<span class="exported-tag">已导出</span>`}
@@ -550,6 +645,7 @@ async function toggleRecord() {
 
       alert(`第${record.attempt}次练习已保存！`);
       await renderPractice();
+      if (shadowMode === 'last') await applyShadowSource();  // 自动换成刚录的这一遍
       // 录音结束，恢复歌词显示
       await renderLyrics();
     };
@@ -730,7 +826,9 @@ async function downloadRecord(id) {
 async function delRecord(id) {
   if (!confirm('确定删除？')) return;
   await deleteRecord(id);
+  if (shadowMode !== 'original') await applyShadowSource();   // 母本被删则自动回退
   await renderPractice();
+  updateShadowUI();
 }
 
 // ========== 导入（累加式批量队列） ==========
@@ -1009,7 +1107,10 @@ async function exportRecordingsAndFree() {
     );
 
     // 刷新当前可能显示录音列表的页面
-    if (currentLesson) await renderPractice();
+    if (currentLesson) {
+      if (shadowMode !== 'original') { shadowMode = 'original'; await applyShadowSource(); }
+      await renderPractice();
+    }
   } catch (e) {
     alert('导出失败: ' + (e && e.message ? e.message : e));
   } finally {

@@ -116,6 +116,14 @@
               <button data-rate="2" onclick="setSpeed(2)">2×</button>
             </div>
           </div>
+          <div class="speed-row">
+            <span class="speed-label">跟读</span>
+            <div id="shadow-bar" class="shadow-bar">
+              <button data-mode="original" class="active" onclick="setShadowMode('original')">🎧 原声</button>
+              <button data-mode="last" onclick="setShadowMode('last')">🔁 我的上一次</button>
+            </div>
+          </div>
+          <div id="shadow-now" class="shadow-now hidden"></div>
         </div>
 
         <div class="lyrics-toggle">
