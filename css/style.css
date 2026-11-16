@@ -326,7 +326,11 @@ select:focus-visible,
 .lesson-item.managing:active { transform: none; }
 
 /* 上次读到这里：外圈高亮 + 左上角圆点 + 数字着重，方便一眼找到 */
-.lesson-item.last { box-shadow: 0 0 0 2px var(--accent) inset; }
+.lesson-item.last {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(234,176,64,.16), var(--surface) 85%);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
 .lesson-item.last .num { color: var(--accent); }
 .lesson-item.last::before {
   content: "";
@@ -740,3 +744,27 @@ select:focus-visible,
 }
 .record-item.shadow-src { border-color: var(--accent); background: linear-gradient(90deg, rgba(234,176,64,.10), var(--surface) 70%); }
 .record-item .btns button.shadow-pick { font-size: 14px; }
+
+/* 统计页：文件夹筛选条（横向可滑动） */
+.stats-filter {
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: var(--sp-3);
+  scrollbar-width: none;
+}
+.stats-filter::-webkit-scrollbar { display: none; }
+.stats-filter button {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.stats-filter button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }

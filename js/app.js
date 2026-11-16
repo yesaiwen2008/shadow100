@@ -5,7 +5,7 @@
 
 const TARGET = 100;
 const DEFAULT_CATEGORY = '新概念英语';
-const APP_VERSION = '3.27'; // 每次发新版就改这一处，首页底部会自动显示
+const APP_VERSION = '3.28'; // 每次发新版就改这一处，首页底部会自动显示
 
 let currentCategory = null;
 let currentLesson = null;
@@ -172,15 +172,29 @@ async function pickShadow(id) {
 }
 
 // ========== 记住“上次读到哪”==========
-const LAST_LESSON_KEY = 'shadow_last_lesson_id';
-function setLastLesson(id) {
-  try { localStorage.setItem(LAST_LESSON_KEY, String(id)); } catch (e) {}
+// 每个文件夹（分类）各自记一个“最后练习的课程”，切换文件夹互不影响。
+const LAST_LESSONS_KEY = 'shadow_last_lessons';      // { 分类id: 课程id }
+const LEGACY_LAST_LESSON_KEY = 'shadow_last_lesson_id'; // 旧版：全局只记一个
+function readLastMap() {
+  try { return JSON.parse(localStorage.getItem(LAST_LESSONS_KEY) || '{}') || {}; }
+  catch (e) { return {}; }
 }
-function getLastLesson() {
+function setLastLesson(id, categoryId) {
   try {
-    const v = localStorage.getItem(LAST_LESSON_KEY);
-    return v ? parseInt(v) : null;
-  } catch (e) { return null; }
+    const map = readLastMap();
+    map[String(categoryId || 1)] = id;
+    localStorage.setItem(LAST_LESSONS_KEY, JSON.stringify(map));
+  } catch (e) {}
+}
+function getLastLesson(categoryId, lessonIds) {
+  const v = readLastMap()[String(categoryId || 1)];
+  if (v != null) return v;
+  // 兼容旧版数据：旧版只记了一个全局“上次读到”，它属于这个文件夹就沿用
+  try {
+    const legacy = parseInt(localStorage.getItem(LEGACY_LAST_LESSON_KEY));
+    if (legacy && lessonIds.includes(legacy)) return legacy;
+  } catch (e) {}
+  return null;
 }
 
 function goHome() { showView('home'); renderHome(); }
@@ -199,6 +213,9 @@ function openImport() { showView('import'); renderCategoryOptions(); }
 // ========== 统计页 ==========
 function openStats() { showView('stats'); renderStats(); }
 
+let statsCat = 'all';   // 统计页当前查看的文件夹：'all' 或分类id
+function setStatsCat(v) { statsCat = v; renderStats(); }
+
 // 当天零点时间戳（本地时区）
 function dayKey(ts) {
   const d = new Date(ts);
@@ -207,7 +224,34 @@ function dayKey(ts) {
 }
 
 async function renderStats() {
-  const { records } = await getStats();
+  const { records: allRecords, lessons, categories } = await getStats();
+
+  // 文件夹筛选条：全部 + 每个文件夹（只有一个文件夹时不显示）
+  if (statsCat !== 'all' && !categories.some(c => c.id === statsCat)) statsCat = 'all';
+  const filterEl = document.getElementById('stats-filter');
+  filterEl.innerHTML = '';
+  if (categories.length > 1) {
+    const mk = (label, value) => {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.className = statsCat === value ? 'active' : '';
+      b.onclick = () => setStatsCat(value);
+      filterEl.appendChild(b);
+    };
+    mk('全部', 'all');
+    categories.forEach(c => mk(c.name, c.id));
+    filterEl.style.display = 'flex';
+  } else {
+    filterEl.style.display = 'none';
+  }
+
+  // 按文件夹统计：只算属于该文件夹下课程的录音
+  let records = allRecords;
+  const curCat = statsCat === 'all' ? null : categories.find(c => c.id === statsCat);
+  if (curCat) {
+    const ids = new Set(lessons.filter(l => (l.categoryId || 1) === curCat.id).map(l => l.id));
+    records = allRecords.filter(r => ids.has(r.lessonId));
+  }
 
   // 按天聚合：哪些天练过 + 每天总时长
   const dayMap = {};
@@ -262,7 +306,7 @@ async function renderStats() {
   const sinceEl = document.getElementById('st-since');
   sinceEl.textContent = totalDays > 0
     ? `从 ${fmtCN(days[0])} 开始的坚持`
-    : '还没有练习记录，今天开始吧！';
+    : (curCat ? '这个文件夹还没有练习记录' : '还没有练习记录，今天开始吧！');
 
   document.getElementById('st-total-days').textContent = totalDays;
   document.getElementById('st-streak').textContent = streak;
@@ -372,7 +416,7 @@ async function renderCategory() {
     return;
   }
 
-  const lastId = getLastLesson();
+  const lastId = getLastLesson(cat.id, lessons.map(l => l.id));
 
   lessons.sort((a, b) => a.book - b.book || a.lesson - b.lesson).forEach(lesson => {
     const count = countMap[lesson.id] || 0;
@@ -451,7 +495,7 @@ async function openPractice(id) {
   currentLesson = await getLesson(id);
   if (!currentLesson) return;
 
-  setLastLesson(id); // 记住这是最近读的一篇，方便下次快速找到
+  setLastLesson(id, currentLesson.categoryId); // 记住这个文件夹里最近读的一篇，方便下次快速找到
   showAllRecords = false; // 每次进入课程都先收起，只看最近几条
 
   document.getElementById('p-title').textContent =
